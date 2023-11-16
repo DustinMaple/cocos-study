@@ -20,7 +20,15 @@ export class PlayerController extends Component {
     public boxPrefab: Prefab|null = null;
 
     start() {
-        input.on(Input.EventType.MOUSE_UP, this.onMouseUp, this);
+
+    }
+
+    setInputActive(active: boolean){
+        if(active){
+            input.on(Input.EventType.MOUSE_UP, this.onMouseUp, this);
+        }else{
+            input.off(Input.EventType.MOUSE_UP, this.onMouseUp, this);
+        }
     }
 
     update(deltaTime: number) {
@@ -63,8 +71,8 @@ export class PlayerController extends Component {
         this._curJumpSpeed = this._jumpStep / this._jumpTime;
         this.node.getPosition(this._curPos);
         Vec3.add(this._targetPos, this._curPos, new Vec3(this._jumpStep, 0, 0));
-
-
     }
+
+    reset(){}
 }
 

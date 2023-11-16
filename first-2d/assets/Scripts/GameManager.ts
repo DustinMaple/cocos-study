@@ -1,5 +1,5 @@
-import {_decorator, CCInteger, Component, instantiate, Node, Prefab} from 'cc';
-import {BLOCK_SIZE} from "db://assets/Scripts/PlayerController";
+import {_decorator, CCInteger, Component, instantiate, Label, Node, Prefab, Vec3} from 'cc';
+import {BLOCK_SIZE, PlayerController} from "db://assets/Scripts/PlayerController";
 
 const {ccclass, property} = _decorator;
 
@@ -21,6 +21,15 @@ export class GameManager extends Component {
 
     @property({type: CCInteger})
     public roadLength: number = 50;
+
+    @property({type: Node})
+    public startMenu: Node|null = null;
+    @property({type: Label})
+    public stepLabel: Label|null = null;
+    @property({type: PlayerController})
+    public playerCtrl: PlayerController|null = null;
+
+
     private _road: BlockType[] = [];
 
     start() {
@@ -64,6 +73,53 @@ export class GameManager extends Component {
 
         return block;
     }
-}
 
+    setCurState(state: GameState){
+        switch(state){
+            case GameState.GS_INIT:
+                this.init();
+                break;
+            case GameState.GS_PLAYING:
+                this.player();
+                break;
+            case GameState.GS_END:
+                this.end();
+                break;
+        }
+    }
+    end() {
+        console.info("游戏结束")
+    }
+
+    player() {
+        if(this.startMenu){
+            this.startMenu.active = false;
+        }
+
+        if(this.stepLabel){
+            this.stepLabel.string = "0";
+        }
+
+        setTimeout(()=>{
+            if(this.playerCtrl){
+                this.playerCtrl.setInputActive(true);
+            }
+        }, 0.1);
+    }
+    
+    init() {
+        if(this.startMenu){
+            this.startMenu.active = true;
+        }
+
+        this.generateLoad();
+
+        if(this.playerCtrl){
+            this.playerCtrl.setInputActive(false);
+            this.playerCtrl.node.setPosition(Vec3.ZERO);
+            this.playerCtrl.reset();
+
+        }
+    }
+}
 
