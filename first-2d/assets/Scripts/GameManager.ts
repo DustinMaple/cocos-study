@@ -33,7 +33,9 @@ export class GameManager extends Component {
     private _road: BlockType[] = [];
 
     start() {
-        this.generateLoad();
+        this.setCurState(GameState.GS_INIT);
+
+        this.playerCtrl?.node.on("JumpEnd", this.onPlayerJumpEnd, this)
     }
 
     generateLoad() {
@@ -80,7 +82,7 @@ export class GameManager extends Component {
                 this.init();
                 break;
             case GameState.GS_PLAYING:
-                this.player();
+                this.play();
                 break;
             case GameState.GS_END:
                 this.end();
@@ -91,7 +93,7 @@ export class GameManager extends Component {
         console.info("游戏结束")
     }
 
-    player() {
+    play() {
         if(this.startMenu){
             this.startMenu.active = false;
         }
@@ -119,6 +121,28 @@ export class GameManager extends Component {
             this.playerCtrl.node.setPosition(Vec3.ZERO);
             this.playerCtrl.reset();
 
+        }
+    }
+
+    onStartButtonClicked(){
+        this.setCurState(GameState.GS_PLAYING);
+    }
+
+    onPlayerJumpEnd(moveIndex: number){
+        if(this.stepLabel){
+            this.stepLabel.string = ''+(moveIndex >= this.roadLength ? this.roadLength : moveIndex);
+        }
+
+        this.checkResult(moveIndex);
+    }
+
+    checkResult(moveIndex: number) {
+        if(moveIndex < this.roadLength){
+            if(this._road[moveIndex] == BlockType.BT_NONE){
+                this.setCurState(GameState.GS_INIT);
+            }
+        }else{
+            this.setCurState(GameState.GS_INIT);
         }
     }
 }

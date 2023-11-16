@@ -13,6 +13,7 @@ export class PlayerController extends Component {
     private _curJumpSpeed: number = 0;
     private _curPos: Vec3 = new Vec3();
     private _targetPos: Vec3 = new Vec3();
+    private _curMoveIndex: number = 0;
 
     @property(Animation)
     BodyAnim: Animation = null;
@@ -38,6 +39,8 @@ export class PlayerController extends Component {
             if (this._curJumpTime >= this._jumpTime) {
                 this._startJump = false;
                 this.node.setPosition(this._targetPos);
+
+                this.onJumpEnd();
             } else {
                 this._curPos.x += this._curJumpSpeed * deltaTime;
                 this.node.setPosition(this._curPos)
@@ -72,8 +75,16 @@ export class PlayerController extends Component {
         this._curJumpSpeed = this._jumpStep / this._jumpTime;
         this.node.getPosition(this._curPos);
         Vec3.add(this._targetPos, this._curPos, new Vec3(this._jumpStep, 0, 0));
+
+        this._curMoveIndex += step;
     }
 
-    reset(){}
+    reset(){
+        this._curMoveIndex = 0;
+    }
+
+    onJumpEnd(){
+        this.node.emit("JumpEnd", this._curMoveIndex);
+    }
 }
 
