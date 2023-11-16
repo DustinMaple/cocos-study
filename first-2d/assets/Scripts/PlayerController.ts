@@ -1,5 +1,6 @@
-import { _decorator, Component, Node, input, EventMouse, Input, Vec3, Animation, Prefab } from 'cc';
-const { ccclass, property } = _decorator;
+import {_decorator, Component, Node, input, EventMouse, Input, Vec3, Animation, Prefab} from 'cc';
+
+const {ccclass, property} = _decorator;
 
 export const BLOCK_SIZE = 40;
 
@@ -11,13 +12,13 @@ export class PlayerController extends Component {
     private _jumpTime: number = 0.1;
     private _curJumpSpeed: number = 0;
     private _curPos: Vec3 = new Vec3();
-    private _targetPos:Vec3 = new Vec3();
+    private _targetPos: Vec3 = new Vec3();
 
     @property(Animation)
     BodyAnim: Animation = null;
 
 
-    public boxPrefab: Prefab|null = null;
+    public boxPrefab: Prefab | null = null;
 
     start() {
 
@@ -32,34 +33,34 @@ export class PlayerController extends Component {
     }
 
     update(deltaTime: number) {
-        if (this._startJump){
+        if (this._startJump) {
             this._curJumpTime += deltaTime;
-            if(this._curJumpTime >= this._jumpTime){
+            if (this._curJumpTime >= this._jumpTime) {
                 this._startJump = false;
                 this.node.setPosition(this._targetPos);
-            }else{
+            } else {
                 this._curPos.x += this._curJumpSpeed * deltaTime;
                 this.node.setPosition(this._curPos)
             }
         }
     }
 
-    onMouseUp(event: EventMouse){
-        if (event.getButton() === 0){
+    onMouseUp(event: EventMouse) {
+        if (event.getButton() === 0) {
             this.jumpByStep(1);
 
-        }else if (event.getButton() === 2){
+        } else if (event.getButton() === 2) {
             this.jumpByStep(2);
         }
     }
 
-    jumpByStep(step: number){
-        if(this._startJump){
+    jumpByStep(step: number) {
+        if (this._startJump) {
             return
         }
 
-        if(this.BodyAnim){
-            const flipName = step === 1 ?  "OneStep" : "TwoStep";
+        if (this.BodyAnim) {
+            const flipName = step === 1 ? "OneStep" : "TwoStep";
             const state = this.BodyAnim.getState(flipName);
             this._jumpTime = state.duration;
             this.BodyAnim.play(flipName);
