@@ -258,3 +258,22 @@ import {} from "";
 
 
 
+ destroy和removeFromParent的区别：
+
+后者并没有释放，但是出了当前方法，可就访问不到了，直接内存泄漏，所以尽量不要使用。也不要parent = null
+
+
+
+#### 计时器
+
+所有计时器的API都在Component中，并且添加的计时器，是以component对象为单位管理的。
+
+this.schedule(function, 5);// 每隔 5秒 执行一次function
+
+this.schedule(function, interval, repeat,delay);// 间隔，重复次数，第一次的延时
+
+this.scheduleOnce(function, 2); // 演示2秒执行，只执行一次
+
+this.unschedule(function); // 取消计时器，这里要保证传递的function是同一个对象。
+
+this.unscheduleAllCallbacks();// 取消当前组件中所有的计时器。
