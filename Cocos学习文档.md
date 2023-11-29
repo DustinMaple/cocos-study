@@ -248,11 +248,36 @@ import {} from "";
 
 
 
+#### 常用节点和组件接口
+
+| 操作       | 方法                                                         | 注意事项                                                     |
+| ---------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 激活/关闭  | this.node.active = true/false;<br />也可以在编辑器中操作。   | 会触发onEnable和onDisable。<br />节点关闭，组件也会禁用，子节点也会关闭。但是子节点的active值不会改变，所以需要通过activeInHierarchy来拍断是否激活。<br />不在场景中的节点，无法被激活。所以要先添加再设置active。 |
+| 更改父节点 | 1. this.node.parent = parentNode;<br />2. this.node.removeFromParent();<br />newParentNode.addChild(this.node); | 移出的时候，会同时移出绑定的时间。<br />新创建的节点，需要设置父节点后，才能正确的完成节点的初始化。 |
+| 遍历子节点 | this.node.children返回节点的所有子节点，类型是数组。         | 只会访问直接的子节点，不会递归访问。                         |
+| 节点变换   | this.node.position = new Vec3();<br />this.node.setPosition(x, y, z);<br />this.node.setRotation(x, y, z);<br />this.node.setScale(1, 1, 1); | 可以直接通过node，来访问位置、旋转、缩放。                   |
 
 
 
+**组件常用接口**
+
+this.enabled：是否每帧执行该组件的update。如果是渲染组件，则控制是否显示。
+
+update：deltaTime是两帧的时间差，单位毫秒。
 
 
+
+#### 节点的创建和销毁
+
+let node = new Node('box');//创建一个节点
+
+this.node.addChild(node);// 将节点添加到场景中
+
+instantiate(node);// 使用node创建一个新的node，类似克隆。
+
+instantiate(prefab);// 使用预制体创建一个对象。
+
+node.destroy();// 销毁节点，节点并不会立即移除，而是在当前帧结束后移除。但是其立即进入无效状态
 
 
 
