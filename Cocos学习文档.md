@@ -663,3 +663,197 @@ cocos中，除了插件脚本，所有的代码都以模块的形式组织。根
 * 项目代码，包括**组件脚本**和**项目类（全局脚本）**
 * 引擎功能，参考[引擎模块](https://docs.cocos.com/creator/manual/zh/scripting/modules/engine.html)。
 * 第三方模块，如npm，参考[外部模块使用案例](https://docs.cocos.com/creator/manual/zh/scripting/modules/example.html)
+
+
+
+模块加载顺序
+
+1. Cocos Creator 3.x 的 引擎模块`cc`
+2. 插件脚本：根据以来的关系顺序加载，不存在以来关系的则无序
+3. 普通脚本：并发导入，导入时严格遵守由`import`确定的引用关系和执行顺序。
+
+
+
+#### 引擎模块
+
+从3.0开始，将不能通过全局变量`cc`的访问引擎功能
+
+从3.0开始，将不能通过全局变量`cc`的访问引擎功能
+
+从3.0开始，将不能通过全局变量`cc`的访问引擎功能
+
+
+
+cc中提供的功能是动态的，与 **`项目设置`** 中的 **`功能裁剪`** 设置有关。
+
+
+
+**日志输出**
+
+log();
+
+
+
+**构建时常量**
+
+`cc/env` 中定义了一些常量，他们表示**执行环境、调试界别、平台标识**等等。
+
+| 名称（都是boolean） | 类型     | 说明                           |
+| ------------------- | -------- | ------------------------------ |
+| BUILD               | 执行环境 | 构建环境                       |
+| PREVIEW             | 执行环境 | 预览环境                       |
+| EDITOR              | 执行环境 | 编辑器环境                     |
+| DEBUG               | 调试级别 | 调试级别                       |
+| DEV                 | 调试级别 | 等同于DEBUG / EDITOR / PREVIEW |
+
+常用操作：
+
+在调试情况下输出日志
+
+```typescript
+if(DEV){
+    log('some debug info');
+}
+```
+
+
+
+
+
+#### 模块规范
+
+Cocos Creator引擎提供的所有功能都以ESM模块的i形式存在。项目中，以.ts作为后缀的文件都是为ESM模块。
+
+对于其他模块格式，CocosCreator选择与Node.js类似的规则类鉴别。一下文件被视为ESM格式：
+
+* 以.mjs 为后缀的文件；
+* 以.js为后缀的文件，并且预期最相近的父级 package.json 文件中包含一个顶级的 "type" 字段，其值为"module"
+
+其余文件被视为CommonJS模块格式，包括：
+
+* 以 .cjs为后缀的文件
+* 以 .js 为后缀的文件，并且 package.json 中，type="commonjs"
+* 不在上述条件下，以.js为后缀的文件。
+
+
+
+**模块使用**
+
+使用import和export进行导入导出，from后面的字符串称为**模块说明符**。且模块说明符也可以作为参数，出现在动态导入的import()表达式中。
+
+```typescript
+import { Foo } from './foo';
+export { Bar } from './bar';
+```
+
+
+
+模块说明符包括：相对说明符、绝对说明符、裸说明符。其表示的是不同的路径指示方式。
+
+.js的模块导入，说明符必须带有后缀。
+
+
+
+#### ESM与CJS交互规则
+
+* CommonJS模块有module.exports导出，在导入CommonJS模块时，可以使用ES模块默认的导入方式或其对应的sugar语法形式导入。
+
+```typescript
+import {default as cjs } from 'cjs';// 
+import cjsSugar from 'cjs';// 语法糖
+```
+
+* ESM模块的 default 导出只想CJS模块的module.exports
+* 非 default 部分的导出，Node.js通过静态分析将其作为独立的ES模块提供。
+
+
+
+例：
+
+```typescript
+// foo.js
+module.exports = {
+    a: 1,
+    b: 2,
+}
+
+module.exports.c = 3;
+
+// test.mjs
+
+// default 指向 module.exports
+import foo from './foo.js'; // 等价于 import { default as foo } from './foo.js'
+console.log(JSON.stringify(foo)); // {"a":1,"b":2,"c":3}
+
+// 导入 foo 模块的所有导出
+import * as module_foo from './foo.js'
+console.log(JSON.stringify(module_foo)); // {"c":3,"default":{"a":1,"b":2,"c":3}}
+
+import { a } from './foo.js'
+console.log(a); // Error: a is not defined
+
+// 根据上方第三点，c 有独立导出
+import { c } from './foo.js'
+console.log(c); // 3
+```
+
+
+
+外部模块的使用方式：
+
+1. 获取模块，例如在项目目录下使用npm获取。
+2. 找到模块中的package.json，判断格式
+   1. 根据main字段，判定入口文件
+   2. 根据type字段，判定类型。
+3. 在入口文件中，找到导出的写法
+4. 确定了模块格式和导出方式，就可以在ts文件中使用了。
+
+
+
+此处有以为或报错，可参考https://docs.cocos.com/creator/manual/zh/scripting/modules/example.html
+
+
+
+#### 导入映射
+
+在菜单栏中找到，**项目** -> **项目设置** -> **脚本** 中的 **导入映射** ，编辑内容即可开启。
+
+
+
+**模块别名**
+
+将复杂的相对模块或绝对模块映射为裸模块。
+
+
+
+例：
+
+在项目中创建映射文件 import-map.json
+
+```json
+{
+    "imports":{
+        "foo":"./assets/lib/foo.ts"
+    }
+}
+```
+
+之后可以通过 import * as foo from 'foo';导入foo模块。并且这个方式同样适用于目录。
+
+
+
+### 外部代码支持
+
+#### 插件脚本
+
+选中一个脚本，在Inspector中勾选 Import As Plugin，该脚本则变为**插件脚本**。目前仅支持js插件脚本。
+
+
+
+## 2D对象
+
+
+
+
+
+## 资源管理
