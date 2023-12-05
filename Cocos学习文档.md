@@ -37,11 +37,11 @@ PS：
 
 #### 组件类装饰器
 
+和ccclass一起出现
+
 **executeInEditMode**
 
 让生命周期在编辑器模式下生效，默认false
-
-
 
 
 
@@ -187,7 +187,7 @@ GradientRange 渐变色范围
 
 ### 注意事项
 
-有一些属性时ReadOnly的，不建议直接操作。通过使用局部变量和set方法间接修改。
+有一些属性是ReadOnly的，不建议直接操作。通过使用局部变量和set方法间接修改。
 
 ```typescript
 get worldPosition(): Readonly<math.Vec3>;
@@ -253,7 +253,7 @@ import {} from "";
 | 操作       | 方法                                                         | 注意事项                                                     |
 | ---------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | 激活/关闭  | this.node.active = true/false;<br />也可以在编辑器中操作。   | 会触发onEnable和onDisable。<br />节点关闭，组件也会禁用，子节点也会关闭。但是子节点的active值不会改变，所以需要通过activeInHierarchy来拍断是否激活。<br />不在场景中的节点，无法被激活。所以要先添加再设置active。 |
-| 更改父节点 | 1. this.node.parent = parentNode;<br />2. this.node.removeFromParent();<br />newParentNode.addChild(this.node); | 移出的时候，会同时移出绑定的时间。<br />新创建的节点，需要设置父节点后，才能正确的完成节点的初始化。 |
+| 更改父节点 | 1. this.node.parent = parentNode;<br />2. this.node.removeFromParent();<br />newParentNode.addChild(this.node); | 移出的时候，会同时移除绑定的事件。<br />新创建的节点，需要设置父节点后，才能正确的完成节点的初始化。 |
 | 遍历子节点 | this.node.children返回节点的所有子节点，类型是数组。         | 只会访问直接的子节点，不会递归访问。                         |
 | 节点变换   | this.node.position = new Vec3();<br />this.node.setPosition(x, y, z);<br />this.node.setRotation(x, y, z);<br />this.node.setScale(1, 1, 1); | 可以直接通过node，来访问位置、旋转、缩放。                   |
 
@@ -386,7 +386,7 @@ director.removePersistRootNode(myNode);// 移除
 
 #### 资源的获取和加载
 
-资源都继承自Asset，如Texture2D、SpriteFrame、AnimationClip、Prefab。他们的加载时自动的，并且关联的资源会被一起加载。
+资源都继承自Asset，如Texture2D、SpriteFrame、AnimationClip、Prefab。他们的加载是自动的，并且关联的资源会被一起加载。
 
 一般在组件中定义资源字段，然后在Inpector窗口中赋值。
 
@@ -857,3 +857,123 @@ console.log(c); // 3
 
 
 ## 资源管理
+
+2.4开始，推出了AssetManager，替代以前的loader。具备加载资源、查找资源、销毁资源、缓存资源、Asset Bundle等功能。
+
+所有方法通过**assetManager**对象访问。类型和美剧则定义在AssetManager类中。
+
+
+
+### 资源加载
+
+并没有在场景制作的时候，进行设置，而是需要运行时动态设置，则需要使用动态加载。
+
+
+
+**将资源放在resources目录下**，然后使用resources.load等api加载。
+
+```typescript
+// 加载prefab
+resources.load("test/prefab", Prefab, (err, prefab) =>{
+  const newNode = instantiate(prefab);
+  this.node.addChild(newNode);
+})
+
+// 加载AnimationClip
+resources.load("test/anim", AnimationClip, (err, clip)=>{
+  this.node.getComponent(Animation).addClip(clip, "anim");
+})
+```
+
+
+
+注意：
+
+resources中的资源，可以引用文件夹外部的其他资源，并且在项目构建时，除了在`构建发布`面板中勾选的场景外，resources文件夹中的所有资源，包括他们关联的资源，都会被到处。
+
+如果一份资源仅仅被resources中的资源以来，二不需要直接被resources.load调用，就**不要**放在resources中，否则会增大config.json的大小，也无法在构建过程中剔除，json的自动合并逻辑也会收到影响。
+
+
+
+#### 加载SpriteFrame或Texture2D
+
+必须指定具体路径，才能加载到SpriteFrame，如果只指定到目录，加载到的是一个ImageAsset对象。
+
+Sprite组件需要的是spriteFrame，而SpriteFrame的texture则指向Texture2D
+
+
+
+#### 加载图集中的SpriteFrame
+
+必须先加载图集，
+
+```typescript
+resources.load("test/sheep", SpriteAtlas, (err, atlas)=>{
+  const frame = atlas.getSpriteFrame('sheep_0');
+  sprite.spriteFrame = frame;
+})
+```
+
+
+
+#### 加载FBX或gITF模型资源（3D）
+
+将这类资源导入编辑器后，会解析出模型中包含的网格、骨骼、材质、动画等。可以在运行时，加载单一资源。将外部的总资源当作路径即可。例如Monster/anim_run
+
+
+
+#### 批量加载
+
+调用resources.loadDir即可，注意接收资源的方法中，第二个参数是一批资源。
+
+
+
+#### 预加载
+
+调用resources.preload()即可。
+
+
+
+#### 加载远程资源
+
+从服务器上加载资源以及加载用户从其他地方获得的资源（非包内资源），都需要使用这种方式。
+
+assetManager.loadRemote
+
+```typescript
+let url = ".../xx.png";
+assetManager.loadRemote<ImageAsset>(url, (err, imageAsset)=>{
+  const spriteFrame = new SpriteFrame();
+  const texture = new Texture2D();
+  texture.image = imageAsset;
+  spriteFrame.texture = texture;
+})
+
+// 不带后缀，加载方法需要带有后缀。
+let url2 = "xxx";
+assetManager.loadRemote<ImageAsset>(url, {ext: '.png'}, function)
+
+// 使用绝对路径加载相册数据
+let path = "/data/picture/xxx.png";
+
+```
+
+这种加载方式的限制：
+
+1. 只支持图片、声音、文本，不支持SpriteFrame、SpriteAtlas、TiledMap等。（可以使用Asset Bundle）
+2. 如果对方禁止跨域访问，则会加载失败。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
