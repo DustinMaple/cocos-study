@@ -1000,21 +1000,221 @@ let path = "/data/picture/xxx.png";
 | Bundle优先级   | 构建时，**从大到小**的顺序，只有20个可配置优先级。           |
 | 目标平台       | 不同平台可以使用不同配置，构建时将根据对应平台的设置进行构建。开发者可以通过 **项目设置 -> Bundle配置** 自定义配置方案。 |
 | 压缩类型       | 决定输出方式，包括 **合并依赖、无压缩、合并所有JSON、小游戏分包、Zip** ，具体参考[压缩类型](https://docs.cocos.com/creator/manual/zh/asset/bundle.html#%E5%8E%8B%E7%BC%A9%E7%B1%BB%E5%9E%8B) |
-| 配置为远程包   |                                                              |
-| Bundle资源过滤 |                                                              |
-| 构建Bundle     |                                                              |
+| 配置为远程包   | 勾选后，AssetBundle构建后会放在remote文件夹，而不会构建到安装包里，开发者需要将这个**文件夹**放在远程服务器。 |
+| Bundle资源过滤 | 过滤掉不想进入Bundle的资源。                                 |
+| 构建Bundle     | 针对当前选中的bundle进行构建。                               |
+
+**配置完成后记得点击右上方的绿色勾**
+
+**配置完成后记得点击右上方的绿色勾**
+
+**配置完成后记得点击右上方的绿色勾** 
 
 
 
- 
+注意：
+
+1. 不要和4个内置Bundle重名。
+2. 小游戏分包不能配置为远程分包。
+3. Zip类型是为了降低网络请求数量，如果是本地的包，不需要压缩。
+4. 不建议将资源都放在Bundle中。最好是放Scene、Prefab等入口资源或者需要在脚本内动态加载的资源。最后，在构建阶段，会根据依赖关系，到处所有引用的资源来填充整个AssetBundle，这样可以最大限度的减少不必要的资源导出。
 
 
 
+#### 优先级
+
+同一个资源，可能因为被多个资源的依赖，导致其出现在多个Bundle中。此时需要使用优先级，来明确资源真正的归属。
+
+* 资源会优先放在优先级高的Bundle中，低优先级的Bundle只会记录一条信息。并且此时，低优先级的Bundle会依赖高优先级的Bundle。
+* 当一个资源被多个 **相同优先级** 的Bundle引用时，资源会在每个Bundle中复制一份（不希望出现的）。尽量让共享资源出现在高优先级的Bundle中，从而最小化包体。
+
+内置Bundle优先级别：
+
+| Bundle      | 优先级 |
+| ----------- | ------ |
+| main        | 7      |
+| resources   | 8      |
+| start-scene | 20     |
+| internal    | 21     |
+
+建议自定义Bundle的优先级 **不要高于** 内置的Bundle。
 
 
 
+#### 压缩类型
+
+所有Bundle默认压缩类型为 **合并依赖**，开发者可以设置所有Bundle的压缩类型。
 
 
 
+| 压缩类型     | 功能说明                                                     |
+| ------------ | ------------------------------------------------------------ |
+| 合并依赖     | 构建Bundle时，会将相互依赖的资源的JSON文件合并在一起，从而减少运行时加载次数。 |
+| 无压缩       | 没有任何操作                                                 |
+| 合并所有JSON | 都合并到一个JSON文件中                                       |
+| 小游戏分包   |                                                              |
+| Zip          | 将资源文件压缩到一个Zip文件中。                              |
 
+
+
+#### Asset Bundle构建
+
+在构建时，配置为AssetBundle的文件夹中的资源（包括场景、代码和其他资源）以及相关依赖，都会合并到同一个AssetBundle文件夹中。
+
+配置为AssetBundle的文件夹中的所有 **代码和资源** 会进行以下处理：
+
+* 代码：所有代码会根据发布平台合并成一个 `index.js` 或 `game.js` 的入口脚本文件。
+* 资源：所有资源以及相关依赖都会放到 `import` 或 `native` 目录下。
+* 资源配置：所有配置信息，包括路径、类型、版本信息都会合并成一个config.json文件。
+
+构建完成后，该bundle会被打包到对应平台发布包目录下的assets文件夹中。但是有以下两种特殊情况：
+
+1. 配置为远程包，则会放到remote文件夹中。
+2. 压缩类型选了 **小游戏分包**， 则会打包到subpackages文件夹下。
+
+
+
+#### Asset Bundle中的脚本
+
+所有脚本会被打包到一个js文件中。
+
+注意：
+
+* 有些平台不允许加载远程脚本文件。Creator会将Bundle中的代码拷贝到src/bundle-scriptes目录下。
+* 不同bundle中的脚本最好不要相互引用，否则可能会导致在运行时找不到对应脚本。如果需要引用某些类或变量，可以将该类和变量暴露在一个全局命名空间中，从而实现共享。
+
+
+
+#### 加载
+
+使用assetManager.loadBundle来加载Asset Bundle，加载时不需要路径，只需要名称即可。
+
+```typescript
+assetManager.loadBundle('bundle_name', (err, bundle) => {
+  bundle.load('xxx');
+})
+
+assetManager.loadBundle('https://xxx/remote/bundle_name', (err, bundle) => {
+  bundle.load('xxx');
+})
+```
+
+
+
+也可以使用路径加载用户空间中的资源。
+
+```typescript
+assetManager.loadBundle(wx.env.USER_DATA_PATH + 'path/bundle_name', ...);
+```
+
+
+
+如果配置了远程包，构建时，需要在 **构建发布** 面板中 **资源服务器地址**。
+
+在调用loadBundle时，引擎并没有加载AssetBundle中所有资源，而是加载 **资源清单**，以及包含的 **所有脚本**。
+
+
+
+#### bundle对象使用
+
+调用了assetManager.loadBundle()接口后，会获得一个bundle对象，使用这个对象来加载真正的资源。**bundle**对象的使用和resources类似。
+
+bundle可以直接加载场景。与director.loadScene的区别在于，bundle只会加载指定bundle中的场景，且不会运行场景。
+
+```typescript
+bundle.loadScene('test', (err, scene) => {
+  director.runScene(scene);
+})
+```
+
+bundle在被加载后，会缓存在assetManager中，可以使用assetManager.getBundle('bundle_name')来直接获取。也可以用assetManager.removeBundle(bundle);来移除。
+
+
+
+注意：
+
+移除并不会释放资源。
+
+移除并不会释放资源。
+
+移除并不会释放资源。
+
+
+
+**释放**
+
+方法一：
+
+```typescript
+bundle.load('image/xx', SpriteFrame, (err, spriteFrame) => {
+  assetManager.releaseAsset(spriteFrame);
+})
+```
+
+
+
+方法二：使用bundle，传递路径，释放单个资源
+
+```typescript
+bundle.load('image/xx', SpriteFrame, (err, spriteFrame) => {
+  assetManager.release('image', spriteFrame);
+})
+```
+
+
+
+方法三：释放该bundle下所有资源
+
+bundle.releaseAll();
+
+
+
+### 资源释放
+
+资源缓存可以减少重复加载的情况，但是会增加内存和显存占用。
+
+
+
+#### 自动释放
+
+场景可以在Inspector中配置自动释放，在切换场景后，相关资源就会自动被释放。
+
+**建议所有场景都配置为自动释放，除了高频使用的场景**
+
+所有Asset实例都有成员韩式addRef和decRef，用来增加和减少引用计数。一旦计数为零，Creator会对资源进行自动释放。使用案例如下
+
+```typescript
+start () {
+    resources.load('images/background', Texture2D, (err, texture) => {
+        this.texture = texture;
+        // 当需要使用资源时，增加其引用
+        texture.addRef();
+        // ...
+    });
+}
+
+onDestroy () {
+    // 当不需要使用资源时，减少引用
+    // Creator 会在调用 decRef 后尝试对其进行自动释放
+    this.texture.decRef();
+}
+```
+
+
+
+#### 释放检查和过程
+
+1. 检查引用计数。
+2. 一旦被移除，会触发依赖资源的释放检查，并且 **直接** 依赖的资源引用计数都减1.
+3. 如果引用计数不为0，进行循环引用检查。
+
+
+
+#### 手动释放
+
+assetManager.releaseAsset(texture);直接释放指定资源。不需要关注依赖，会自动处理。
+
+
+
+#### 资源的静态引用
 
